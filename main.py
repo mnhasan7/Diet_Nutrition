@@ -113,7 +113,8 @@ def solve_diet(
     Na_max,
     Sug_max,
     Chol_max,
-    SatFat_max
+    SatFat_max,
+    max_per_food=300.0  # Max grams per individual food for variety
 ):
     print("\n" + "="*60)
     print(f"Scenario: {name}")
@@ -122,7 +123,8 @@ def solve_diet(
     n = len(c)  # cost vector from before
     x = cp.Variable(n, nonneg=True)
 
-    u = np.full(n, 1000.0)
+    # Upper bound per food to encourage variety (reduced from 1000g)
+    u = np.full(n, max_per_food)
     constraints = [x <= u]
 
     # Calories
@@ -175,10 +177,15 @@ def solve_diet(
 
     print(f"Optimal cost: ${prob.value:.2f} USD")
 
-    print("\nSelected foods (non-zero):")
-    for i in range(n):
-        if x.value[i] is not None and x.value[i] > 1e-3:
-            print(f"  {food_names[i]:30s} -> {x.value[i]:7.1f} g")
+    # Count and display selected foods
+    selected_foods = [(food_names[i], x.value[i]) for i in range(n) 
+                      if x.value[i] is not None and x.value[i] > 1e-3]
+    
+    print(f"\nNumber of different foods: {len(selected_foods)}")
+    print(f"Max allowed per food: {max_per_food:.0f}g\n")
+    print("Selected foods:")
+    for food_name, amount in selected_foods:
+        print(f"  {food_name:30s} -> {amount:7.1f} g")
 
     # Compute totals
     total_cal   = float(cal_per_g   @ x.value)
@@ -232,8 +239,10 @@ K_min       = 2500   # mg/day
 # ---------------------------------------------------------------------
 x = cp.Variable(n, nonneg=True)  # grams
 
-# Upper bound: say max 1000 g per item (1 kg) for realism
-u = np.full(n, 1000.0)  # grams
+# Upper bound per food to encourage variety (reduced from 1000g to 300g)
+# This prevents the optimizer from selecting just 1-2 cheap foods
+MAX_GRAMS_PER_FOOD = 300.0  # grams
+u = np.full(n, MAX_GRAMS_PER_FOOD)  # grams
 constraints = [x <= u]
 
 # Energy
@@ -296,10 +305,15 @@ if problem.status not in ["optimal", "optimal_inaccurate"]:
 else:
     print(f"Optimal cost: ${problem.value:.2f} USD")
 
-    print("\nSelected foods (non-zero):")
-    for i in range(n):
-        if x.value[i] is not None and x.value[i] > 1e-3:
-            print(f"  {food_names[i]:30s} -> {x.value[i]:7.1f} g")
+    # Count and display selected foods
+    selected_foods = [(food_names[i], x.value[i]) for i in range(n) 
+                      if x.value[i] is not None and x.value[i] > 1e-3]
+    
+    print(f"\nNumber of different foods: {len(selected_foods)}")
+    print(f"Max allowed per food: {MAX_GRAMS_PER_FOOD:.0f}g\n")
+    print("Selected foods:")
+    for food_name, amount in selected_foods:
+        print(f"  {food_name:30s} -> {amount:7.1f} g")
 
     # Totals
     total_cal   = float(cal_per_g   @ x.value)  # kcal
