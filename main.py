@@ -34,10 +34,10 @@ n = len(df)
 #    Dataset is per 100 g, so divide by 100 to get "per gram"
 # ---------------------------------------------------------------------
 
-# Conversion factor constant
+# conversion factor constant
 PER_100G_TO_PER_G = 100.0
 
-# Helper function to convert nutrient values with error handling
+# function to convert nutrient values with error handling
 def get_nutrient_per_g(column_name, conversion_factor=PER_100G_TO_PER_G):
     """Extract nutrient data and convert to per-gram basis."""
     if column_name not in df.columns:
