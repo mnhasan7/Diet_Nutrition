@@ -8,12 +8,11 @@ import os
 # Page configuration
 st.set_page_config(
     page_title="Diet Optimizer",
-    page_icon="🥗",
     layout="wide"
 )
 
 # Title and description
-st.title("🥗 Diet Optimizer")
+st.title("Diet Optimizer")
 st.markdown("**Optimize your daily diet to minimize cost while meeting nutritional requirements**")
 
 # Load dataset
@@ -143,13 +142,13 @@ def optimize_diet(df, params):
 # Load data
 try:
     df = load_data()
-    st.sidebar.success(f"✅ Loaded {len(df)} foods from dataset")
+    st.sidebar.success(f"Loaded {len(df)} foods from dataset")
 except Exception as e:
     st.error(f"Error loading data: {e}")
     st.stop()
 
 # Sidebar - User Profile Selection
-st.sidebar.header("📊 Select Profile or Customize")
+st.sidebar.header("Select Profile or Customize")
 
 profile = st.sidebar.selectbox(
     "Choose a preset profile:",
@@ -182,7 +181,7 @@ else:
     params = profiles["Young Adult Male"].copy()  # Default values
 
 # Sidebar - Custom Parameters
-st.sidebar.header("⚙️ Nutritional Constraints")
+st.sidebar.header("Nutritional Constraints")
 
 # Calories
 col1, col2 = st.sidebar.columns(2)
@@ -213,7 +212,7 @@ params['chol_max'] = st.sidebar.number_input("Max Cholesterol (mg)", value=param
 params['sat_max'] = st.sidebar.number_input("Max Saturated Fat (g)", value=params['sat_max'], step=5)
 
 # Minerals
-with st.sidebar.expander("🧪 Mineral Requirements"):
+with st.sidebar.expander("Mineral Requirements"):
     params['ca_min'] = st.number_input("Min Calcium (mg)", value=800, step=50)
     params['iron_min'] = st.number_input("Min Iron (mg)", value=8, step=1)
     params['mag_min'] = st.number_input("Min Magnesium (mg)", value=200, step=50)
@@ -231,38 +230,38 @@ params['max_per_food'] = st.sidebar.slider(
 )
 
 # Optimize button
-if st.sidebar.button("🚀 Optimize Diet", type="primary", use_container_width=True):
+if st.sidebar.button("Optimize Diet", type="primary", width="stretch"):
     with st.spinner("Optimizing your diet..."):
         status, cost, results_df, totals = optimize_diet(df, params)
         
         if status in ["optimal", "optimal_inaccurate"]:
-            st.success(f"✅ Optimization successful!")
+            st.success(f"Optimization successful!")
             
             # Display results in columns
             col1, col2, col3 = st.columns(3)
-            col1.metric("💰 Total Cost", f"${cost:.2f}")
-            col2.metric("🍽️ Different Foods", len(results_df))
-            col3.metric("📦 Total Weight", f"{results_df['Amount (g)'].sum():.0f}g")
+            col1.metric("Total Cost", f"${cost:.2f}")
+            col2.metric("Different Foods", len(results_df))
+            col3.metric("Total Weight", f"{results_df['Amount (g)'].sum():.0f}g")
             
             # Food selection table
-            st.subheader("🛒 Shopping List")
+            st.subheader("Shopping List")
             st.dataframe(
                 results_df.style.format({'Amount (g)': '{:.1f}', 'Cost ($)': '${:.2f}'}),
-                use_container_width=True,
+                width="stretch",
                 hide_index=True
             )
             
             # Download button
             csv = results_df.to_csv(index=False)
             st.download_button(
-                label="📥 Download Shopping List (CSV)",
+                label="Download Shopping List (CSV)",
                 data=csv,
                 file_name="diet_shopping_list.csv",
                 mime="text/csv"
             )
             
             # Nutritional summary
-            st.subheader("📊 Nutritional Summary")
+            st.subheader("Nutritional Summary")
             col1, col2, col3 = st.columns(3)
             
             with col1:
@@ -281,7 +280,7 @@ if st.sidebar.button("🚀 Optimize Diet", type="primary", use_container_width=T
                 st.metric("Saturated Fat", f"{totals['Saturated Fat']:.1f} g")
             
             # Macronutrient pie chart
-            st.subheader("🥧 Macronutrient Distribution")
+            st.subheader("Macronutrient Distribution")
             macro_data = pd.DataFrame({
                 'Nutrient': ['Protein', 'Carbs', 'Fat'],
                 'Grams': [totals['Protein'], totals['Carbs'], totals['Fat']]
@@ -289,13 +288,13 @@ if st.sidebar.button("🚀 Optimize Diet", type="primary", use_container_width=T
             st.bar_chart(macro_data.set_index('Nutrient'))
             
         else:
-            st.error(f"❌ Optimization failed: {status}")
+            st.error(f"Optimization failed: {status}")
             st.info("Try relaxing some constraints or adjusting your requirements.")
 else:
     # Show instructions
-    st.info("👈 Adjust your nutritional requirements in the sidebar and click **Optimize Diet**")
+    st.info("Adjust your nutritional requirements in the sidebar and click **Optimize Diet**")
     
-    st.subheader("📖 How to Use")
+    st.subheader("How to Use")
     st.markdown("""
     1. **Select a profile** or create a custom one
     2. **Adjust constraints** to match your dietary needs
@@ -304,9 +303,9 @@ else:
     5. **Download** your shopping list as CSV
     """)
     
-    st.subheader("📋 Available Foods Preview")
+    st.subheader("Available Foods Preview")
     st.dataframe(
         df[['food', 'Caloric Value', 'Protein', 'Carbohydrates', 'Fat', 'Market Price (USD per gram)']].head(10),
-        use_container_width=True,
+        width="stretch",
         hide_index=True
     )
