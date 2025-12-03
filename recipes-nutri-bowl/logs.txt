@@ -1,0 +1,26 @@
+person 1:
+
+Optimal cost: 2.1423254043039126
+Weights (g):
+burrito with beans beef 57.46
+succotash 65.88
+pupusas con queso 100.59
+caramel custard flan 21.66
+cheese tortellini 21.09
+pout raw 117.78
+
+person 2:
+
+Optimal cost: 1.2583333335098312
+Weights (g):
+burrito with beans beef 94.44
+succotash 55.56
+wonton wrappers 200.0
+
+person 3:
+
+cream cheese 1.0
+pupusas con queso 199.1
+french toast with butter 111.45
+whopper burger king 38.46
+
