@@ -68,6 +68,10 @@ def optimize_diet(df, params):
     Magnesium_per_g = get_nutrient_per_g(df, "Magnesium")
     Phosphorus_per_g = get_nutrient_per_g(df, "Phosphorus")
     Potassium_per_g = get_nutrient_per_g(df, "Potassium")
+
+    # Vitamins (per 100 g -> per g)
+    vitamin_cols = [col for col in df.columns if col.startswith("Vitamin ")]
+    vitamins_per_g = {col: get_nutrient_per_g(df, col) for col in vitamin_cols}
     
     # Decision variable
     x = cp.Variable(n, nonneg=True)
@@ -132,12 +136,15 @@ def optimize_diet(df, params):
                 'Cholesterol': float(chol_per_g @ x.value),
                 'Saturated Fat': float(sat_per_g @ x.value)
             }
+
+            # Vitamin totals (dataset units)
+            vitamin_totals = {vit: float(arr @ x.value) for vit, arr in vitamins_per_g.items()}
             
-            return prob.status, prob.value, results_df, totals
+            return prob.status, prob.value, results_df, totals, vitamin_totals
         else:
-            return prob.status, None, None, None
+            return prob.status, None, None, None, None
     except Exception as e:
-        return f"Error: {str(e)}", None, None, None
+        return f"Error: {str(e)}", None, None, None, None
 
 # Load data
 try:
@@ -232,7 +239,7 @@ params['max_per_food'] = st.sidebar.slider(
 # Optimize button
 if st.sidebar.button("Optimize Diet", type="primary", width="stretch"):
     with st.spinner("Optimizing your diet..."):
-        status, cost, results_df, totals = optimize_diet(df, params)
+        status, cost, results_df, totals, vitamin_totals = optimize_diet(df, params)
         
         if status in ["optimal", "optimal_inaccurate"]:
             st.success(f"Optimization successful!")
@@ -279,6 +286,15 @@ if st.sidebar.button("Optimize Diet", type="primary", width="stretch"):
                 st.metric("Cholesterol", f"{totals['Cholesterol']:.0f} mg")
                 st.metric("Saturated Fat", f"{totals['Saturated Fat']:.1f} g")
             
+            # Vitamin totals table
+            if vitamin_totals:
+                st.subheader("Vitamin Totals (dataset units)")
+                vt_df = pd.DataFrame({
+                    'Vitamin': list(vitamin_totals.keys()),
+                    'Total': [vitamin_totals[k] for k in vitamin_totals.keys()]
+                })
+                st.dataframe(vt_df.sort_values('Vitamin'), width="stretch", hide_index=True)
+
             # Macronutrient pie chart
             st.subheader("Macronutrient Distribution")
             macro_data = pd.DataFrame({
