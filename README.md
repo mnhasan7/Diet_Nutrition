@@ -1,8 +1,32 @@
 # Diet_Nutrition
 Diet Nutrition Optimization - Convex Project Fall 2025
 
+Optimize diets with Streamlit and solve nutrition LPs.
 
-## Example Output Rev_02:
+## Setup
+```
+git clone https://github.com/mnhasan7/Diet_Nutrition.git
+python -m venv venv
+source venv/bin/activate          # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+## Run
+```
+streamlit run app.py              # launches the Diet Optimizer UI
+python main.py                    # runs the console/solver script
+```
+
+## Files
+app.py   – Streamlit UI for selecting constraints, uploading CSVs, and optimizing diets.
+
+main.py  – Command-line script to load data and perform optimization without the UI.
+
+## App.py Preview
+![Pic1](asset/app_output_1.png)
+![Pic2](asset/app_output_2.png)
+
+## Example main.py Output Rev_02:
 ```
 Status: optimal
 Optimal cost: $2.55 USD
@@ -121,7 +145,7 @@ Sat fat             : 20.00 g, (max 20 g)
 ```
 
 
-## Example Output Rev_01:
+## Example main.py Output Rev_01:
 ```
 Status: optimal
 Optimal cost: 6.224641510115688
@@ -142,4 +166,4 @@ Total sodium: 133.75244983573992
 Total sugar: 10.787912680558412
 ```
 
-![Pic1](pic1.jpg)
+![Pic3](asset/pic1.jpg)
