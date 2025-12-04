@@ -3,6 +3,9 @@ Diet Nutrition Optimization - Convex Project Fall 2025
 
 Optimize diets with Streamlit and solve nutrition LPs.
 
+## Demo Video
+[![Project demo](https://img.youtube.com/vi/rkeTNgGIy38/0.jpg)](https://youtu.be/rkeTNgGIy38)
+
 ## Setup
 ```
 git clone https://github.com/mnhasan7/Diet_Nutrition.git
