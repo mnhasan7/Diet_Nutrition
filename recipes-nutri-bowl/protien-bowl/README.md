@@ -9,7 +9,6 @@ roe raw → 49.1 g
 cusk raw → 391.3 g
 red salmon sockeye filets smoked → 29.8 g
 
-TOTAL:
 Total Weight : 600.00 g
 Calories     : 800.00 kcal
 Protein      : 124.90 g
