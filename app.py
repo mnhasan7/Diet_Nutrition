@@ -15,27 +15,47 @@ st.set_page_config(
 st.title("Diet Optimizer")
 st.markdown("**Optimize your daily diet to minimize cost while meeting nutritional requirements**")
 
-# Load dataset
-@st.cache_data
-def load_data():
-    DATA_DIR = "Datasets"
-    FILENAME = "food_data_with_prices.csv"
-    DATA_PATH = os.path.join(DATA_DIR, FILENAME)
-    
-    if DATA_PATH.endswith(".csv"):
-        try:
-            df = pd.read_csv(DATA_PATH)
-        except FileNotFoundError:
-            DATA_PATH = os.path.join(DATA_DIR, "food_data_with_prices.xlsx")
-            df = pd.read_excel(DATA_PATH)
-    else:
-        df = pd.read_excel(DATA_PATH)
-    
-    # Basic cleaning
+# Dataset helpers
+def clean_dataset(df: pd.DataFrame) -> pd.DataFrame:
+    """Basic cleaning shared by bundled and uploaded datasets."""
     df = df.dropna(subset=["Market Price (USD per gram)", "Caloric Value", "Protein"])
     df = df[df["Market Price (USD per gram)"] > 0].reset_index(drop=True)
-    
+    if "Category" in df.columns:
+        df["Category"] = df["Category"].fillna("Unspecified")
     return df
+
+
+def validate_dataset(df: pd.DataFrame):
+    """Check for required columns and return missing ones."""
+    required_cols = [
+        "food",
+        "Market Price (USD per gram)",
+        "Caloric Value",
+        "Protein",
+        "Carbohydrates",
+        "Fat",
+    ]
+    missing = [c for c in required_cols if c not in df.columns]
+    return missing
+
+
+@st.cache_data
+def load_data():
+    """Load the bundled dataset from disk."""
+    data_dir = "Datasets"
+    filename = "food_data_with_prices_with_category.csv"
+    data_path = os.path.join(data_dir, filename)
+    
+    if data_path.endswith(".csv"):
+        try:
+            df = pd.read_csv(data_path)
+        except FileNotFoundError:
+            data_path = os.path.join(data_dir, "food_data_with_prices.xlsx")
+            df = pd.read_excel(data_path)
+    else:
+        df = pd.read_excel(data_path)
+    
+    return clean_dataset(df)
 
 # Helper function
 def get_nutrient_per_g(df, column_name, conversion_factor=100.0):
@@ -49,6 +69,7 @@ def optimize_diet(df, params):
     """Run diet optimization with given parameters."""
     n = len(df)
     food_names = df["food"].astype(str).tolist()
+    category_labels = df["Category"].astype(str).tolist() if "Category" in df.columns else None
     
     # Build nutrient arrays
     c = get_nutrient_per_g(df, "Market Price (USD per gram)", conversion_factor=1.0)
@@ -104,12 +125,34 @@ def optimize_diet(df, params):
         Potassium_per_g @ x >= params['k_min']
     ]
     
+    # Category diversity constraint (optional)
+    if category_labels and params.get('min_categories', 0) > 0:
+        unique_cats = sorted(pd.Series(category_labels).unique())
+        min_cats_required = min(params['min_categories'], len(unique_cats))
+        y = cp.Variable(len(unique_cats), boolean=True)
+        max_per_food = params['max_per_food']
+        diversity_min_grams = 1.0  # require at least 1g to count a category
+        for idx, cat in enumerate(unique_cats):
+            mask = np.array([1.0 if label == cat else 0.0 for label in category_labels])
+            constraints.append(mask @ x <= max_per_food * y[idx])
+            constraints.append(mask @ x >= diversity_min_grams * y[idx])
+        constraints.append(cp.sum(y) >= min_cats_required)
+
     # Objective: minimize cost
     objective = cp.Minimize(c @ x)
     prob = cp.Problem(objective, constraints)
     
     try:
-        prob.solve()
+        solved = False
+        for solver in [cp.GLPK_MI, cp.ECOS_BB]:
+            try:
+                prob.solve(solver=solver)
+                solved = True
+                break
+            except Exception:
+                continue
+        if not solved:
+            prob.solve()
         
         if prob.status in ["optimal", "optimal_inaccurate"]:
             # Extract results
@@ -146,10 +189,37 @@ def optimize_diet(df, params):
     except Exception as e:
         return f"Error: {str(e)}", None, None, None, None
 
-# Load data
+# Load data (built-in or uploaded)
+st.sidebar.header("Dataset")
+data_source = st.sidebar.radio(
+    "Choose data source",
+    ["Use bundled dataset", "Upload CSV"],
+    index=0
+)
+
+uploaded_file = st.sidebar.file_uploader(
+    "Upload a .csv with required columns",
+    type=["csv"],
+    help="Required: food, Market Price (USD per gram), Caloric Value, Protein, Carbohydrates, Fat. Optional: other nutrients."
+)
+
 try:
-    df = load_data()
-    st.sidebar.success(f"Loaded {len(df)} foods from dataset")
+    if data_source == "Upload CSV":
+        if uploaded_file is None:
+            st.sidebar.info("Upload a CSV to use it, or switch back to the bundled dataset.")
+            df = load_data()
+            st.sidebar.success(f"Loaded {len(df)} foods from bundled dataset")
+        else:
+            user_df = pd.read_csv(uploaded_file)
+            missing_cols = validate_dataset(user_df)
+            if missing_cols:
+                st.sidebar.error(f"Missing required columns: {', '.join(missing_cols)}")
+                st.stop()
+            df = clean_dataset(user_df)
+            st.sidebar.success(f"Loaded {len(df)} foods from uploaded file")
+    else:
+        df = load_data()
+        st.sidebar.success(f"Loaded {len(df)} foods from bundled dataset")
 except Exception as e:
     st.error(f"Error loading data: {e}")
     st.stop()
@@ -167,17 +237,20 @@ profiles = {
     "Young Adult Male": {
         'cal_min': 2600, 'cal_max': 2900, 'prot_min': 130,
         'carb_min': 260, 'carb_max': 380, 'fat_min': 70, 'fat_max': 100,
-        'fib_min': 25, 'na_max': 2300, 'sug_max': 50, 'chol_max': 300, 'sat_max': 30
+        'fib_min': 25, 'na_max': 2300, 'sug_max': 50, 'chol_max': 300, 'sat_max': 30,
+        'min_categories': 0
     },
     "Adult Female": {
         'cal_min': 1800, 'cal_max': 2100, 'prot_min': 80,
         'carb_min': 180, 'carb_max': 260, 'fat_min': 50, 'fat_max': 80,
-        'fib_min': 25, 'na_max': 2000, 'sug_max': 35, 'chol_max': 250, 'sat_max': 22
+        'fib_min': 25, 'na_max': 2000, 'sug_max': 35, 'chol_max': 250, 'sat_max': 22,
+        'min_categories': 0
     },
     "Senior - Hypertension": {
         'cal_min': 1700, 'cal_max': 2000, 'prot_min': 90,
         'carb_min': 160, 'carb_max': 240, 'fat_min': 50, 'fat_max': 75,
-        'fib_min': 25, 'na_max': 1500, 'sug_max': 35, 'chol_max': 200, 'sat_max': 20
+        'fib_min': 25, 'na_max': 1500, 'sug_max': 35, 'chol_max': 200, 'sat_max': 20,
+        'min_categories': 0
     }
 }
 
@@ -226,6 +299,42 @@ with st.sidebar.expander("Mineral Requirements"):
     params['phos_min'] = st.number_input("Min Phosphorus (mg)", value=700, step=50)
     params['k_min'] = st.number_input("Min Potassium (mg)", value=2500, step=100)
 
+# Category controls
+if "Category" in df.columns:
+    st.sidebar.subheader("Food Categories")
+    categories_available = sorted(df["Category"].astype(str).unique())
+    selected_categories = st.sidebar.multiselect(
+        "Include categories",
+        categories_available,
+        default=categories_available
+    )
+    if not selected_categories:
+        st.sidebar.warning("No categories selected; using all categories.")
+        selected_categories = categories_available
+    max_cats = len(selected_categories)
+    default_min_cats = min(3, max_cats)
+    params['min_categories'] = st.sidebar.slider(
+        "Minimum different categories",
+        min_value=0,
+        max_value=max_cats,
+        value=default_min_cats,
+        help="Guarantee variety by requiring the solution to include foods from at least this many categories."
+    )
+else:
+    selected_categories = None
+    params['min_categories'] = 0
+
+# Apply category filter
+if selected_categories:
+    df_active = df[df["Category"].astype(str).isin(selected_categories)].reset_index(drop=True)
+else:
+    df_active = df
+
+# Stop early if filter removes everything
+if df_active.empty:
+    st.error("No foods left after applying category filters. Please select more categories.")
+    st.stop()
+
 # Variety constraint
 params['max_per_food'] = st.sidebar.slider(
     "Max grams per food (variety)", 
@@ -239,7 +348,7 @@ params['max_per_food'] = st.sidebar.slider(
 # Optimize button
 if st.sidebar.button("Optimize Diet", type="primary", use_container_width=True):
     with st.spinner("Optimizing your diet..."):
-        status, cost, results_df, totals, vitamin_totals = optimize_diet(df, params)
+        status, cost, results_df, totals, vitamin_totals = optimize_diet(df_active, params)
         
         if status in ["optimal", "optimal_inaccurate"]:
             st.success(f"Optimization successful!")
@@ -321,7 +430,7 @@ else:
     
     st.subheader("Available Foods Preview")
     st.dataframe(
-        df[['food', 'Caloric Value', 'Protein', 'Carbohydrates', 'Fat', 'Market Price (USD per gram)']].head(10),
+        df_active[['food', 'Caloric Value', 'Protein', 'Carbohydrates', 'Fat', 'Market Price (USD per gram)']].head(10),
         use_container_width=True,
         hide_index=True
     )
