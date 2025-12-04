@@ -14,6 +14,10 @@ st.set_page_config(
 # Title and description
 st.title("Diet Optimizer")
 st.markdown("**Optimize your daily diet to minimize cost while meeting nutritional requirements**")
+vid_col, _ = st.columns([5.5, 6.5])
+with vid_col:
+    st.markdown("Watch a quick overview of the project:")
+    st.video("https://youtu.be/rkeTNgGIy38")
 
 # Dataset helpers
 def clean_dataset(df: pd.DataFrame) -> pd.DataFrame:
