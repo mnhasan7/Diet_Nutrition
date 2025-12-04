@@ -237,7 +237,7 @@ params['max_per_food'] = st.sidebar.slider(
 )
 
 # Optimize button
-if st.sidebar.button("Optimize Diet", type="primary", width="stretch"):
+if st.sidebar.button("Optimize Diet", type="primary", use_container_width=True):
     with st.spinner("Optimizing your diet..."):
         status, cost, results_df, totals, vitamin_totals = optimize_diet(df, params)
         
@@ -254,7 +254,7 @@ if st.sidebar.button("Optimize Diet", type="primary", width="stretch"):
             st.subheader("Shopping List")
             st.dataframe(
                 results_df.style.format({'Amount (g)': '{:.1f}', 'Cost ($)': '${:.2f}'}),
-                width="stretch",
+                use_container_width=True,
                 hide_index=True
             )
             
@@ -293,7 +293,7 @@ if st.sidebar.button("Optimize Diet", type="primary", width="stretch"):
                     'Vitamin': list(vitamin_totals.keys()),
                     'Total': [vitamin_totals[k] for k in vitamin_totals.keys()]
                 })
-                st.dataframe(vt_df.sort_values('Vitamin'), width="stretch", hide_index=True)
+                st.dataframe(vt_df.sort_values('Vitamin'), use_container_width=True, hide_index=True)
 
             # Macronutrient pie chart
             st.subheader("Macronutrient Distribution")
@@ -322,6 +322,6 @@ else:
     st.subheader("Available Foods Preview")
     st.dataframe(
         df[['food', 'Caloric Value', 'Protein', 'Carbohydrates', 'Fat', 'Market Price (USD per gram)']].head(10),
-        width="stretch",
+        use_container_width=True,
         hide_index=True
     )
