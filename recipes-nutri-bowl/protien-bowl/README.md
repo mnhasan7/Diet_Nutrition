@@ -1,3 +1,4 @@
+LOGS FOR protein-bowl:
 
 ===== HIGH-PROTEIN OPTIMAL MEAL =====
 Ingredients:
@@ -8,7 +9,7 @@ roe raw → 49.1 g
 cusk raw → 391.3 g
 red salmon sockeye filets smoked → 29.8 g
 
--------- TOTALS --------
+TOTALS 
 Total Weight : 600.00 g
 Calories     : 800.00 kcal
 Protein      : 124.90 g
@@ -18,4 +19,3 @@ Fiber        : 8.00 g
 Sodium       : 1.03 g
 Sugar        : 6.37 g
 Total Cost   : $6.43
-------------------------
