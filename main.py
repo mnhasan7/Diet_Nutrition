@@ -34,44 +34,60 @@ n = len(df)
 #    Dataset is per 100 g, so divide by 100 to get "per gram"
 # ---------------------------------------------------------------------
 
+# conversion factor constant
+PER_100G_TO_PER_G = 100.0
+
+# function to convert nutrient values with error handling
+def get_nutrient_per_g(column_name, conversion_factor=PER_100G_TO_PER_G):
+    """Extract nutrient data and convert to per-gram basis."""
+    if column_name not in df.columns:
+        print(f"Warning: Column '{column_name}' not found in dataset")
+        return np.zeros(n)
+    return df[column_name].fillna(0).to_numpy() / conversion_factor
+
 # Cost per gram (already per gram per dataset description)
-c = df["Market Price (USD per gram)"].to_numpy()  # USD / g
+c = get_nutrient_per_g("Market Price (USD per gram)", conversion_factor=1.0)  # USD / g
 
 # Macronutrients and other main nutrients (per 100 g → per g)
-cal_per_g   = df["Caloric Value"].to_numpy() / 100.0        # kcal/g
-fat_per_g   = df["Fat"].to_numpy() / 100.0                  # g/g
-sat_per_g   = df["Saturated Fats"].to_numpy() / 100.0       # g/g
-mono_per_g  = df["Monounsaturated Fats"].to_numpy() / 100.0 # g/g
-poly_per_g  = df["Polyunsaturated Fats"].to_numpy() / 100.0 # g/g
-carb_per_g  = df["Carbohydrates"].to_numpy() / 100.0        # g/g
-sugar_per_g = df["Sugars"].to_numpy() / 100.0               # g/g
-prot_per_g  = df["Protein"].to_numpy() / 100.0              # g/g
-fib_per_g   = df["Dietary Fiber"].to_numpy() / 100.0        # g/g
+cal_per_g   = get_nutrient_per_g("Caloric Value")              # kcal/g
+fat_per_g   = get_nutrient_per_g("Fat")                        # g/g
+sat_per_g   = get_nutrient_per_g("Saturated Fats")             # g/g
+mono_per_g  = get_nutrient_per_g("Monounsaturated Fats")       # g/g
+poly_per_g  = get_nutrient_per_g("Polyunsaturated Fats")       # g/g
+carb_per_g  = get_nutrient_per_g("Carbohydrates")              # g/g
+sugar_per_g = get_nutrient_per_g("Sugars")                     # g/g
+prot_per_g  = get_nutrient_per_g("Protein")                    # g/g
+fib_per_g   = get_nutrient_per_g("Dietary Fiber")              # g/g
 
 # Cholesterol: mg per 100 g → mg/g
-chol_per_g  = df["Cholesterol"].to_numpy() / 100.0          # mg/g
+chol_per_g  = get_nutrient_per_g("Cholesterol")                # mg/g
 
-# Sodium: description says mg per 100 g → mg/g
-Na_per_g    = df["Sodium"].to_numpy() / 100.0               # mg/g
+# Sodium: mg per 100 g → mg/g
+Na_per_g    = get_nutrient_per_g("Sodium")                     # mg/g
 
 # Water: g per 100 g → g/g
-water_per_g = df["Water"].to_numpy() / 100.0                # g/g
+water_per_g = get_nutrient_per_g("Water")                      # g/g
 
-# Minerals: mg per 100 g → mg/g
-Calcium_per_g    = df["Calcium"].to_numpy() / 100.0
-Copper_per_g     = df["Copper"].to_numpy() / 100.0
-Iron_per_g       = df["Iron"].to_numpy() / 100.0
-Magnesium_per_g  = df["Magnesium"].to_numpy() / 100.0
-Manganese_per_g  = df["Manganese"].to_numpy() / 100.0
-Phosphorus_per_g = df["Phosphorus"].to_numpy() / 100.0
-Potassium_per_g  = df["Potassium"].to_numpy() / 100.0
-Selenium_per_g   = df["Selenium"].to_numpy() / 100.0
-Zinc_per_g       = df["Zinc"].to_numpy() / 100.0
+# Minerals: mg per 100 g → mg/g (using dictionary for cleaner code)
+mineral_names = ["Calcium", "Copper", "Iron", "Magnesium", "Manganese", 
+                 "Phosphorus", "Potassium", "Selenium", "Zinc"]
+minerals_per_g = {mineral: get_nutrient_per_g(mineral) for mineral in mineral_names}
+
+# Create individual variables for backward compatibility
+Calcium_per_g    = minerals_per_g["Calcium"]
+Copper_per_g     = minerals_per_g["Copper"]
+Iron_per_g       = minerals_per_g["Iron"]
+Magnesium_per_g  = minerals_per_g["Magnesium"]
+Manganese_per_g  = minerals_per_g["Manganese"]
+Phosphorus_per_g = minerals_per_g["Phosphorus"]
+Potassium_per_g  = minerals_per_g["Potassium"]
+Selenium_per_g   = minerals_per_g["Selenium"]
+Zinc_per_g       = minerals_per_g["Zinc"]
 
 # Vitamins: treat all as "per 100 g → per g" regardless of mg / µg;
 # we'll just report totals with a unit tag.
 vitamin_cols = [col for col in df.columns if col.startswith("Vitamin ")]
-vitamins_per_g = {col: df[col].to_numpy() / 100.0 for col in vitamin_cols}
+vitamins_per_g = {col: get_nutrient_per_g(col) for col in vitamin_cols}
 
 # nutrition density (unitless score per 100 g → per g)
 if "Nutrition Density" in df.columns:
@@ -97,7 +113,8 @@ def solve_diet(
     Na_max,
     Sug_max,
     Chol_max,
-    SatFat_max
+    SatFat_max,
+    max_per_food=300.0  # Max grams per individual food for variety
 ):
     print("\n" + "="*60)
     print(f"Scenario: {name}")
@@ -106,7 +123,8 @@ def solve_diet(
     n = len(c)  # cost vector from before
     x = cp.Variable(n, nonneg=True)
 
-    u = np.full(n, 1000.0)
+    # Upper bound per food to encourage variety (reduced from 1000g)
+    u = np.full(n, max_per_food)
     constraints = [x <= u]
 
     # Calories
@@ -159,10 +177,15 @@ def solve_diet(
 
     print(f"Optimal cost: ${prob.value:.2f} USD")
 
-    print("\nSelected foods (non-zero):")
-    for i in range(n):
-        if x.value[i] is not None and x.value[i] > 1e-3:
-            print(f"  {food_names[i]:30s} -> {x.value[i]:7.1f} g")
+    # Count and display selected foods
+    selected_foods = [(food_names[i], x.value[i]) for i in range(n) 
+                      if x.value[i] is not None and x.value[i] > 1e-3]
+    
+    print(f"\nNumber of different foods: {len(selected_foods)}")
+    print(f"Max allowed per food: {max_per_food:.0f}g\n")
+    print("Selected foods:")
+    for food_name, amount in selected_foods:
+        print(f"  {food_name:30s} -> {amount:7.1f} g")
 
     # Compute totals
     total_cal   = float(cal_per_g   @ x.value)
@@ -216,8 +239,10 @@ K_min       = 2500   # mg/day
 # ---------------------------------------------------------------------
 x = cp.Variable(n, nonneg=True)  # grams
 
-# Upper bound: say max 1000 g per item (1 kg) for realism
-u = np.full(n, 1000.0)  # grams
+# Upper bound per food to encourage variety (reduced from 1000g to 300g)
+# This prevents the optimizer from selecting just 1-2 cheap foods
+MAX_GRAMS_PER_FOOD = 300.0  # grams
+u = np.full(n, MAX_GRAMS_PER_FOOD)  # grams
 constraints = [x <= u]
 
 # Energy
@@ -280,10 +305,15 @@ if problem.status not in ["optimal", "optimal_inaccurate"]:
 else:
     print(f"Optimal cost: ${problem.value:.2f} USD")
 
-    print("\nSelected foods (non-zero):")
-    for i in range(n):
-        if x.value[i] is not None and x.value[i] > 1e-3:
-            print(f"  {food_names[i]:30s} -> {x.value[i]:7.1f} g")
+    # Count and display selected foods
+    selected_foods = [(food_names[i], x.value[i]) for i in range(n) 
+                      if x.value[i] is not None and x.value[i] > 1e-3]
+    
+    print(f"\nNumber of different foods: {len(selected_foods)}")
+    print(f"Max allowed per food: {MAX_GRAMS_PER_FOOD:.0f}g\n")
+    print("Selected foods:")
+    for food_name, amount in selected_foods:
+        print(f"  {food_name:30s} -> {amount:7.1f} g")
 
     # Totals
     total_cal   = float(cal_per_g   @ x.value)  # kcal
